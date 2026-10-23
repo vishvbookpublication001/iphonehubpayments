@@ -2,55 +2,41 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
-    const body = await req.json();
-    const { amount, customerName } = body;
+    const { amount, customerName } = await req.json();
 
     const merchantId = process.env.JAZZ_MERCHANT_ID;
     const apiKey = process.env.JAZZ_API_KEY;
 
-    // Check if variables are properly loaded
     if (!merchantId || !apiKey) {
-      console.error("Missing Credentials:", { merchantId, apiKey });
-      return NextResponse.json(
-        { error: "Merchant credentials are missing in Environment Variables" }, 
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "API Credentials Missing" }, { status: 400 });
     }
 
-    // Call JazzPays Gateway API
-    const response = await fetch("https://jazzpays.com/api/v1/pay", { // Check your exact JazzPays endpoint URL
+    // JazzPays Gateway API Endpoint (Apna exact Endpoint URL yahan check karke daalo)
+    const res = await fetch("https://jazzpays.com/api/create-order", { 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-merchant-id": merchantId,
-        "x-api-key": apiKey
+        "X-Merchant-ID": merchantId,
+        "X-API-Key": apiKey,
       },
       body: JSON.stringify({
         merchant_id: merchantId,
         api_key: apiKey,
         amount: Number(amount),
-        customer_name: customerName || "Customer",
-        redirect_url: "https://iphonehubpayments.vercel.app"
+        customer_name: customerName,
       }),
     });
 
-    const responseData = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      console.error("JazzPays API error details:", responseData);
-      return NextResponse.json(
-        { error: responseData?.message || "Payment Gateway Server Error" }, 
-        { status: response.status }
-      );
+    if (!res.ok) {
+      const errText = await res.text();
+      return NextResponse.json({ error: "Gateway response error: " + errText }, { status: res.status });
     }
 
-    return NextResponse.json(responseData);
+    const data = await res.json();
+    return NextResponse.json(data);
 
-  } catch (err) {
-    console.error("Server Catch Error:", err);
-    return NextResponse.json(
-      { error: err.message || "Failed to connect to Payment Gateway" }, 
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error("Payment API Error:", error);
+    return NextResponse.json({ error: "Gateway connection failed: " + error.message }, { status: 500 });
   }
 }
