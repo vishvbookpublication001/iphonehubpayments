@@ -1,91 +1,69 @@
 'use client';
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
 
-function PaymentComponent() {
-  const searchParams = useSearchParams();
-  const [name, setName] = useState('');
-  const [amount, setAmount] = useState('');
+import { useState } from 'react';
+
+export default function Home() {
+  const [amount, setAmount] = useState('500');
+  const [customerName, setCustomerName] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const urlAmount = searchParams.get('amount');
-    const urlName = searchParams.get('name');
-    if (urlAmount) setAmount(urlAmount);
-    if (urlName) setName(urlName);
-  }, [searchParams]);
 
   const handlePayment = async (e) => {
     e.preventDefault();
-    if (!name || !amount) {
-      alert('Kripya Name aur Amount dono fill karein!');
-      return;
-    }
-
     setLoading(true);
+
     try {
       const res = await fetch('/api/pay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, amount }),
+        body: JSON.stringify({ amount, customerName }),
       });
 
       const data = await res.json();
 
-      if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
+      if (data.payUrl) {
+        window.location.href = data.payUrl;
       } else {
-        alert(data.message || 'Payment initiation failed');
+        alert(data.error || "Payment initiation failed");
         setLoading(false);
       }
     } catch (err) {
-      alert('Error: ' + err.message);
+      alert("Something went wrong: " + err.message);
       setLoading(false);
     }
   };
 
   return (
-    <main style={{ padding: '40px 20px', fontFamily: 'sans-serif', maxWidth: '400px', margin: '50px auto', border: '1px solid #ddd', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-      <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>iPhone Hub Payments</h2>
-      <form onSubmit={handlePayment}>
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ fontWeight: 'bold' }}>Customer Name:</label>
+    <main style={{ padding: '40px', maxWidth: '400px', margin: 'auto', fontFamily: 'sans-serif' }}>
+      <h2>iPhone Hub Payments</h2>
+      <form onSubmit={handlePayment} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <div>
+          <label>Customer Name:</label>
           <input
             type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Apna naam likhein"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
             required
-            style={{ width: '100%', padding: '10px', marginTop: '5px', boxSizing: 'border-box', borderRadius: '5px', border: '1px solid #ccc' }}
+            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
           />
         </div>
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ fontWeight: 'bold' }}>Enter Amount (₹):</label>
+        <div>
+          <label>Enter Amount (₹):</label>
           <input
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="Amount daalein (e.g. 19999)"
             required
-            style={{ width: '100%', padding: '10px', marginTop: '5px', boxSizing: 'border-box', borderRadius: '5px', border: '1px solid #ccc' }}
+            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
           />
         </div>
         <button
           type="submit"
           disabled={loading}
-          style={{ width: '100%', padding: '12px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}
+          style={{ padding: '10px', background: '#0070f3', color: '#fff', border: 'none', cursor: 'pointer' }}
         >
           {loading ? 'Processing...' : 'Pay Now'}
         </button>
       </form>
     </main>
-  );
-}
-
-export default function Home() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <PaymentComponent />
-    </Suspense>
   );
 }
