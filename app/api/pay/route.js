@@ -14,14 +14,13 @@ export async function POST(req) {
       return NextResponse.json({ error: "Merchant credentials missing" }, { status: 400 });
     }
 
-    const gatewayUrl = "https://jazpayss.org/api/public/v1/payin/create";[span_0](start_span)[span_0](end_span)[span_1](start_span)[span_1](end_span)
+    const gatewayUrl = "https://jazpayss.org/api/public/v1/payin/create";
     const formattedAmount = Number(amountVal).toFixed(2);
     const orderNo = "ORD" + Date.now();
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const host = req.headers.get("host") || "iphonehubpayments.vercel.app";
     const notifyUrl = "https://" + host + "/api/notify";
 
-    // Plain object construction without any complex loops
     const params = {
       amount: formattedAmount,
       customer_name: customerNameVal || "Customer",
@@ -31,7 +30,6 @@ export async function POST(req) {
       timestamp: timestamp
     };
 
-    // Explicitly building query string alphabetically
     const str = "amount=" + params.amount + 
                 "&customer_name=" + params.customer_name + 
                 "&merchant_id=" + params.merchant_id + 
