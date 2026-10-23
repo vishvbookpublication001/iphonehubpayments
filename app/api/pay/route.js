@@ -1,70 +1,56 @@
-import crypto from 'crypto';
-
-function generateSign(params, secretKey) {
-  const filteredParams = Object.keys(params)
-    .filter((key) => params[key] !== '' && params[key] !== null && key !== 'sign')
-    .sort()
-    .reduce((acc, key) => {
-      acc[key] = params[key];
-      return acc;
-    }, {});
-
-  const queryString = Object.keys(filteredParams)
-    .map((key) => key + '=' + filteredParams[key])
-    .join('&');
-
-  const stringSignTemp = queryString + '&key=' + secretKey;
-  return crypto.createHash('md5').update(stringSignTemp).digest('hex').toLowerCase();
-}
+import { NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { amount, name } = body;
+    const { amount, customerName } = body;
 
-    const merchant_id = process.env.JAZZ_MERCHANT_ID;
-    const secret_key = process.env.JAZZ_API_KEY;
+    const merchantId = process.env.JAZZ_MERCHANT_ID;
+    const apiKey = process.env.JAZZ_API_KEY;
 
-    if (!merchant_id || !secret_key) {
-      return Response.json({ message: 'JazzPays keys missing in environment variables' }, { status: 400 });
+    // Check if variables are properly loaded
+    if (!merchantId || !apiKey) {
+      console.error("Missing Credentials:", { merchantId, apiKey });
+      return NextResponse.json(
+        { error: "Merchant credentials are missing in Environment Variables" }, 
+        { status: 400 }
+      );
     }
 
-    const payload = {
-      merchant_id: merchant_id,
-      order_no: 'JAZZ_' + Date.now(),
-      amount: parseFloat(amount).toFixed(2),
-      redirect_url: 'https://iphonehubpayments.vercel.app/success',
-      notify_url: 'https://iphonehubpayments.vercel.app/api/pay',
-      customer_name: name || 'Customer',
-      timestamp: Math.floor(Date.now() / 1000).toString(),
-    };
-
-    payload.sign = generateSign(payload, secret_key);
-
-    const response = await fetch('https://jazpays.org/api/public/v1/payin/create', {
-      method: 'POST',
+    // Call JazzPays Gateway API
+    const response = await fetch("https://jazzpays.com/api/v1/pay", { // Check your exact JazzPays endpoint URL
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
+        "x-merchant-id": merchantId,
+        "x-api-key": apiKey
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        merchant_id: merchantId,
+        api_key: apiKey,
+        amount: Number(amount),
+        customer_name: customerName || "Customer",
+        redirect_url: "https://iphonehubpayments.vercel.app"
+      }),
     });
 
-    const responseText = await response.text();
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch (e) {
-      return Response.json({ message: 'Gateway Response Error: ' + responseText.substring(0, 100) }, { status: 500 });
+    const responseData = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      console.error("JazzPays API error details:", responseData);
+      return NextResponse.json(
+        { error: responseData?.message || "Payment Gateway Server Error" }, 
+        { status: response.status }
+      );
     }
 
-    const payUrl = result.data?.pay_url || result.data?.payment_url;
+    return NextResponse.json(responseData);
 
-    if ((result.code === 0 || result.code === '0') && payUrl) {
-      return Response.json({ paymentUrl: payUrl });
-    } else {
-      return Response.json({ message: result.msg || 'Gateway Error: ' + JSON.stringify(result) }, { status: 400 });
-    }
-  } catch (error) {
-    return Response.json({ message: 'Error: ' + error.message }, { status: 500 });
+  } catch (err) {
+    console.error("Server Catch Error:", err);
+    return NextResponse.json(
+      { error: err.message || "Failed to connect to Payment Gateway" }, 
+      { status: 500 }
+    );
   }
 }
