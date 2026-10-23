@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// Signature generation according to JazPays Docs
 function generateSignature(params, secretKey) {
   const str = Object.keys(params)
     .filter((k) => k !== 'sign' && params[k] !== '' && params[k] !== null && params[k] !== undefined)
@@ -23,10 +22,9 @@ export async function POST(req) {
       return NextResponse.json({ error: "Merchant credentials missing in Environment Variables" }, { status: 400 });
     }
 
-    // Exact Base URL from Documentation
-    const gatewayUrl = "https://jazpayss.org/api/public/v1/payin"; 
+    // Base URL with /pay endpoint
+    const gatewayUrl = "https://jazpayss.org/api/public/v1/pay"; 
 
-    // Formatting amount to 2 decimal places (e.g., "500.00")
     const formattedAmount = Number(amount).toFixed(2);
 
     const payload = {
@@ -35,10 +33,7 @@ export async function POST(req) {
       customer_name: customerName || "Customer",
     };
 
-    // Calculate Signature using Pay-in API Key
     payload.sign = generateSignature(payload, apiKey);
-
-    console.log("Sending payload to JazPays:", payload);
 
     const res = await fetch(gatewayUrl, {
       method: "POST",
