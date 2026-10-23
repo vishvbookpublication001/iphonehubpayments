@@ -1,69 +1,72 @@
-'use client';
+import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 
-import { useState } from 'react';
+export async function POST(req) {
+  try {
+    const { amount, customerName } = await req.json();
 
-export default function Home() {
-  const [amount, setAmount] = useState('500');
-  const [customerName, setCustomerName] = useState('');
-  const [loading, setLoading] = useState(false);
+    const merchantId = process.env.JAZZ_MERCHANT_ID;
+    const apiKey = process.env.JAZZ_API_KEY;
 
-  const handlePayment = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/pay', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, customerName }),
-      });
-
-      const data = await res.json();
-
-      if (data.payUrl) {
-        window.location.href = data.payUrl;
-      } else {
-        alert(data.error || "Payment initiation failed");
-        setLoading(false);
-      }
-    } catch (err) {
-      alert("Something went wrong: " + err.message);
-      setLoading(false);
+    if (!merchantId || !apiKey) {
+      return NextResponse.json({ error: "Merchant credentials missing" }, { status: 400 });
     }
-  };
 
-  return (
-    <main style={{ padding: '40px', maxWidth: '400px', margin: 'auto', fontFamily: 'sans-serif' }}>
-      <h2>iPhone Hub Payments</h2>
-      <form onSubmit={handlePayment} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        <div>
-          <label>Customer Name:</label>
-          <input
-            type="text"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
-        </div>
-        <div>
-          <label>Enter Amount (₹):</label>
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={loading}
-          style={{ padding: '10px', background: '#0070f3', color: '#fff', border: 'none', cursor: 'pointer' }}
-        >
-          {loading ? 'Processing...' : 'Pay Now'}
-        </button>
-      </form>
-    </main>
-  );
+    const gatewayUrl = "https://jazpayss.org/api/public/v1/payin/create";[span_1](start_span)[span_1](end_span)[span_2](start_span)[span_2](end_span)
+    const formattedAmount = Number(amount).toFixed(2);
+    const orderNo = "ORD" + Date.now();
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const host = req.headers.get("host") || "iphonehubpayments.vercel.app";
+    const notifyUrl = "https://" + host + "/api/notify";
+
+    const params = {
+      merchant_id: merchantId,
+      order_no: orderNo,
+      amount: formattedAmount,
+      notify_url: notifyUrl,
+      timestamp: timestamp,
+      customer_name: customerName || "Customer"
+    };
+
+    // Sort keys alphabetically and build signature string
+    const sortedKeys = Object.keys(params).sort();
+    let str = "";
+    for (let i = 0; i < sortedKeys.length; i++) {
+      const key = sortedKeys[i];
+      const val = params[key];
+      if (val !== "" && val !== null && val !== undefined) {
+        if (str !== "") str += "&";
+        str += key + "=" + val;
+      }
+    }
+    str += "&key=" + apiKey;
+
+    // MD5 hash in UPPERCASE
+    const sign = crypto.createHash('md5').update(str, 'utf8').digest('hex').toUpperCase();
+    params.sign = sign;
+
+    const res = await fetch(gatewayUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || data?.code !== 0) {
+      console.error("JazPays API Error:", data);
+      return NextResponse.json({ error: data?.msg || "Gateway payment creation failed" }, { status: 400 });
+    }
+
+    const payUrl = data?.data?.pay_url;
+    if (!payUrl) {
+      return NextResponse.json({ error: "Pay URL not received from gateway" }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, payUrl });
+
+  } catch (error) {
+    console.error("Payment API Error:", error);
+    return NextResponse.json({ error: "Gateway connection failed: " + error.message }, { status: 500 });
+  }
 }
