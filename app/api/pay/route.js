@@ -11,8 +11,8 @@ export async function POST(req) {
       return NextResponse.json({ error: "API Credentials Missing" }, { status: 400 });
     }
 
-    // Yahan hum apna API URL rakhenge (Jise check karna hai)
-    const gatewayUrl = "https://jazzpays.com/api/create-order"; 
+    // Updated JazPays API Endpoint URL based on your merchant domain
+    const gatewayUrl = "https://jazpayss.org/api/create-order"; 
     console.log("Attempting to fetch URL:", gatewayUrl);
 
     const res = await fetch(gatewayUrl, { 
