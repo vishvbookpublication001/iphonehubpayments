@@ -1,4 +1,16 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
+
+// Signature generation according to JazPays Docs
+function generateSignature(params, secretKey) {
+  const str = Object.keys(params)
+    .filter((k) => k !== 'sign' && params[k] !== '' && params[k] !== null && params[k] !== undefined)
+    .sort()
+    .map((k) => ${k}=${params[k]})
+    .join('&') + &key=${secretKey};
+
+  return crypto.createHash('md5').update(str, 'utf8').digest('hex').toUpperCase();
+}
 
 export async function POST(req) {
   try {
@@ -8,39 +20,45 @@ export async function POST(req) {
     const apiKey = process.env.JAZZ_API_KEY;
 
     if (!merchantId || !apiKey) {
-      return NextResponse.json({ error: "API Credentials Missing" }, { status: 400 });
+      return NextResponse.json({ error: "Merchant credentials missing in Environment Variables" }, { status: 400 });
     }
 
-    // Updated JazPays API Endpoint URL based on your merchant domain
-    const gatewayUrl = "https://jazpayss.org/api/create-order"; 
-    console.log("Attempting to fetch URL:", gatewayUrl);
+    // Exact Base URL from Documentation
+    const gatewayUrl = "https://jazpayss.org/api/public/v1/payin"; 
 
-    const res = await fetch(gatewayUrl, { 
+    // Formatting amount to 2 decimal places (e.g., "500.00")
+    const formattedAmount = Number(amount).toFixed(2);
+
+    const payload = {
+      merchant_id: merchantId,
+      amount: formattedAmount,
+      customer_name: customerName || "Customer",
+    };
+
+    // Calculate Signature using Pay-in API Key
+    payload.sign = generateSignature(payload, apiKey);
+
+    console.log("Sending payload to JazPays:", payload);
+
+    const res = await fetch(gatewayUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Merchant-ID": merchantId,
-        "X-API-Key": apiKey,
       },
-      body: JSON.stringify({
-        merchant_id: merchantId,
-        api_key: apiKey,
-        amount: Number(amount),
-        customer_name: customerName,
-      }),
+      body: JSON.stringify(payload),
     });
 
+    const data = await res.json().catch(() => null);
+
     if (!res.ok) {
-      const errText = await res.text();
-      console.error("Gateway error response:", errText);
-      return NextResponse.json({ error: "Gateway response error: " + errText }, { status: res.status });
+      console.error("JazPays API Error:", data);
+      return NextResponse.json({ error: data?.message || "Gateway payment creation failed" }, { status: res.status });
     }
 
-    const data = await res.json();
     return NextResponse.json(data);
 
   } catch (error) {
-    console.error("Detailed Fetch Failed Error:", error);
+    console.error("Payment API Error:", error);
     return NextResponse.json({ error: "Gateway connection failed: " + error.message }, { status: 500 });
   }
 }
