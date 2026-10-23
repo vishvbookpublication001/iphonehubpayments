@@ -22,18 +22,29 @@ export async function POST(req) {
       return NextResponse.json({ error: "Merchant credentials missing in Environment Variables" }, { status: 400 });
     }
 
-    // Base URL with /pay endpoint
-    const gatewayUrl = "https://jazpayss.org/api/public/v1/pay"; 
+    // Exact Endpoint from Documentation
+    const gatewayUrl = "https://jazpayss.org/api/public/v1/payin/create"; 
 
     const formattedAmount = Number(amount).toFixed(2);
+    const orderNo = "ORD" + Date.now();
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const host = req.headers.get("host") || "iphonehubpayments.vercel.app";
+    const notifyUrl = https://${host}/api/notify;
 
+    // All required parameters as per JazPays Documentation
     const payload = {
       merchant_id: merchantId,
+      order_no: orderNo,
       amount: formattedAmount,
+      notify_url: notifyUrl,
+      timestamp: timestamp,
       customer_name: customerName || "Customer",
     };
 
+    // Calculate MD5 Signature in UPPERCASE
     payload.sign = generateSignature(payload, apiKey);
+
+    console.log("Sending payload to JazPays:", payload);
 
     const res = await fetch(gatewayUrl, {
       method: "POST",
@@ -45,9 +56,9 @@ export async function POST(req) {
 
     const data = await res.json().catch(() => null);
 
-    if (!res.ok) {
+    if (!res.ok || data?.code !== 0) {
       console.error("JazPays API Error:", data);
-      return NextResponse.json({ error: data?.message || "Gateway payment creation failed" }, { status: res.status });
+      return NextResponse.json({ error: data?.msg || "Gateway payment creation failed" }, { status: 400 });
     }
 
     return NextResponse.json(data);
