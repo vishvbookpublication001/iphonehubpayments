@@ -22,7 +22,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "Merchant credentials missing in Environment Variables" }, { status: 400 });
     }
 
-    const gatewayUrl = "https://jazpayss.org/api/public/v1/payin/create"; 
+    const gatewayUrl = "https://jazpayss.org/api/public/v1/payin/create";[span_1](start_span)[span_1](end_span)[span_2](start_span)[span_2](end_span)
 
     const formattedAmount = Number(amount).toFixed(2);
     const orderNo = "ORD" + Date.now();
@@ -41,8 +41,6 @@ export async function POST(req) {
 
     payload.sign = generateSignature(payload, apiKey);
 
-    console.log("Sending payload to JazPays:", payload);
-
     const res = await fetch(gatewayUrl, {
       method: "POST",
       headers: {
@@ -58,7 +56,12 @@ export async function POST(req) {
       return NextResponse.json({ error: data?.msg || "Gateway payment creation failed" }, { status: 400 });
     }
 
-    return NextResponse.json(data);
+    const payUrl = data?.data?.pay_url;
+    if (!payUrl) {
+      return NextResponse.json({ error: "Pay URL not received from gateway" }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, payUrl });
 
   } catch (error) {
     console.error("Payment API Error:", error);
