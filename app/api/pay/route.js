@@ -6,8 +6,8 @@ function generateSignature(params, secretKey) {
   const str = Object.keys(params)
     .filter((k) => k !== 'sign' && params[k] !== '' && params[k] !== null && params[k] !== undefined)
     .sort()
-    .map((k) => ${k}=${params[k]})
-    .join('&') + &key=${secretKey};
+    .map((k) => k + '=' + params[k])
+    .join('&') + '&key=' + secretKey;
 
   return crypto.createHash('md5').update(str, 'utf8').digest('hex').toUpperCase();
 }
