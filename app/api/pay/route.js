@@ -22,13 +22,13 @@ export async function POST(req) {
       return NextResponse.json({ error: "Merchant credentials missing in Environment Variables" }, { status: 400 });
     }
 
-    const gatewayUrl = "[https://jazpayss.org/api/public/v1/payin/create](https://jazpayss.org/api/public/v1/payin/create)"; 
+    const gatewayUrl = "https://jazpayss.org/api/public/v1/payin/create"; 
 
     const formattedAmount = Number(amount).toFixed(2);
     const orderNo = "ORD" + Date.now();
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const host = req.headers.get("host") || "iphonehubpayments.vercel.app";
-    const notifyUrl = https://${host}/api/notify;
+    const notifyUrl = "https://" + host + "/api/notify";
 
     const payload = {
       merchant_id: merchantId,
