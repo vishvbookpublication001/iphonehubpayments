@@ -22,8 +22,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "Merchant credentials missing in Environment Variables" }, { status: 400 });
     }
 
-    // Exact Endpoint from Documentation
-    const gatewayUrl = "https://jazpayss.org/api/public/v1/payin/create"; 
+    const gatewayUrl = "[https://jazpayss.org/api/public/v1/payin/create](https://jazpayss.org/api/public/v1/payin/create)"; 
 
     const formattedAmount = Number(amount).toFixed(2);
     const orderNo = "ORD" + Date.now();
@@ -31,7 +30,6 @@ export async function POST(req) {
     const host = req.headers.get("host") || "iphonehubpayments.vercel.app";
     const notifyUrl = https://${host}/api/notify;
 
-    // All required parameters as per JazPays Documentation
     const payload = {
       merchant_id: merchantId,
       order_no: orderNo,
@@ -41,7 +39,6 @@ export async function POST(req) {
       customer_name: customerName || "Customer",
     };
 
-    // Calculate MD5 Signature in UPPERCASE
     payload.sign = generateSignature(payload, apiKey);
 
     console.log("Sending payload to JazPays:", payload);
