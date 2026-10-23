@@ -11,8 +11,11 @@ export async function POST(req) {
       return NextResponse.json({ error: "API Credentials Missing" }, { status: 400 });
     }
 
-    // JazzPays Gateway API Endpoint (Apna exact Endpoint URL yahan check karke daalo)
-    const res = await fetch("https://jazzpays.com/api/create-order", { 
+    // Yahan hum apna API URL rakhenge (Jise check karna hai)
+    const gatewayUrl = "https://jazzpays.com/api/create-order"; 
+    console.log("Attempting to fetch URL:", gatewayUrl);
+
+    const res = await fetch(gatewayUrl, { 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -29,6 +32,7 @@ export async function POST(req) {
 
     if (!res.ok) {
       const errText = await res.text();
+      console.error("Gateway error response:", errText);
       return NextResponse.json({ error: "Gateway response error: " + errText }, { status: res.status });
     }
 
@@ -36,7 +40,7 @@ export async function POST(req) {
     return NextResponse.json(data);
 
   } catch (error) {
-    console.error("Payment API Error:", error);
+    console.error("Detailed Fetch Failed Error:", error);
     return NextResponse.json({ error: "Gateway connection failed: " + error.message }, { status: 500 });
   }
 }
